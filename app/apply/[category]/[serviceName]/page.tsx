@@ -52,18 +52,25 @@ export default function DedicatedApplicationTerminal() {
       if (cleanCategory.includes('FINANCIAL')) databaseCategoryEnum = 'FINANCIAL_GATEWAYS';
       if (cleanCategory.includes('EXTERNAL')) databaseCategoryEnum = 'DIRECT_SUPPORT_EXTERNAL_COMPLIANCE';
 
-      // 3. Dispatch payload components directly to your active NestJS engine
-      const response = await api.tickets.create({
-        category: databaseCategoryEnum,
-        serviceName: cleanService,
-        description: description,
-        isInternational: isInternational.toString()
+      // ◄ 3. PACK AND BIND THE FIELDS NATIVELY INSIDE A MULTIPART FORMDATA CONTAINER
+      const formData = new FormData();
+      formData.append('category', databaseCategoryEnum);
+      formData.append('serviceName', cleanService);
+      formData.append('description', description);
+      formData.append('isInternational', isInternational.toString());
+
+      // ◄ 4. LOOP AND APPEND EACH FILE BUFFER UNDER THE MANDATORY BACKEND INTERCEPTOR KEY NAME
+      files.forEach((file) => {
+        formData.append('attachments', file); // MUST exactly match 'attachments' to pass through your NestJS interceptor
       });
 
-      // 4. Capture your verified entry short code response
+      // 5. Dispatch payload components directly to your active NestJS engine
+      const response = await api.tickets.create(formData);
+
+      // 6. Capture your verified entry short code response
       setTrackingCode(response.trackingCode);
     } catch (error: any) {
-      setErrorMessage(error.message || ' Handshake failure. Could not commit application logs.');
+      setErrorMessage(error.message || 'Handshake failure. Could not commit application logs.');
     } finally {
       setIsSubmitting(false);
     }
@@ -131,6 +138,7 @@ export default function DedicatedApplicationTerminal() {
                     <input 
                       type="file" 
                       multiple 
+                      name="attachments" // Maintained structural alignment with the server interceptor pathing
                       onChange={handleFilePicker} 
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" 
                     />

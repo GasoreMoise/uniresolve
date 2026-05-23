@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, FileText, CheckCircle, Clock, AlertTriangle, RefreshCw, Eye, Loader2, LogOut } from 'lucide-react';
 import { api } from '../../../config/api';
+// ◄ IMPORT THE COMPONENT DRAWER WE CONSTRUCTED
+import CaseAuditDrawer from '../../../components/CaseAuditDrawer'; 
 
 interface Ticket {
   id: string;
@@ -17,6 +19,7 @@ interface Ticket {
     fullName: string;
     email: string;
   };
+  attachments?: Array<{ id: string; fileName: string; fileUrl: string }>;
 }
 
 export default function DepartmentalDashboardLedger() {
@@ -26,6 +29,10 @@ export default function DepartmentalDashboardLedger() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [staffInfo, setStaffInfo] = useState<{ name: string; dept: string } | null>(null);
+
+  // ◄ DRAWER CONTROL STATE WRAPPERS
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   const fetchDepartmentQueue = async () => {
     setIsLoading(true);
@@ -66,6 +73,12 @@ export default function DepartmentalDashboardLedger() {
   const handleLogout = () => {
     localStorage.clear();
     router.push('/auth');
+  };
+
+  // ◄ TRIGGER DRAWER DISPATCH COUPLING
+  const openAuditPanel = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setIsDrawerOpen(true);
   };
 
   // Compute live desk overhead metrics
@@ -199,8 +212,9 @@ export default function DepartmentalDashboardLedger() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button 
-                          onClick={() => alert(`Opening audit container panel for case file ${ticket.trackingCode}`)}
-                          className="inline-flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded text-[10px] uppercase tracking-wide transition cursor-pointer border-none"
+                          // ◄ WIRE UP COMPONENT DRAWER TRIGGER EVENT DISPATCHER
+                          onClick={() => openAuditPanel(ticket)} 
+                          className="inline-flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded text-[10px] uppercase tracking-wide transition cursor-pointer border-none shadow-none"
                         >
                           <Eye size={12} /> Audit Case
                         </button>
@@ -213,6 +227,14 @@ export default function DepartmentalDashboardLedger() {
           </div>
         )}
       </main>
+
+      {/* ◄ SIDE-DRAWER LIFECYCLE CONTROLLER MOUNT */}
+      <CaseAuditDrawer 
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        ticket={selectedTicket}
+        onStatusUpdated={fetchDepartmentQueue} // Forces background queue tables to live-reload on save
+      />
 
       <footer className="bg-slate-900 border-t border-slate-800 text-slate-500 text-[10px] font-mono py-4 text-center shrink-0">
         SECURE BACK-OFFICE TERMINAL SUBSYSTEM ENGINE CORRIDOR // VER. 2026.05

@@ -2,13 +2,17 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 /**
  * Enhanced fetch client helper that enforces secure header configuration profiles
+ * Dynamically handles multi-part form payloads for file asset integration.
  */
 async function fetchClient(endpoint: string, options: RequestInit = {}) {
-  // Pull down the active JWT token from browser local storage keys
   const token = typeof window !== 'undefined' ? localStorage.getItem('uniresolve_token') : null;
 
+  // ◄ Check if the incoming body is an instance of browser FormData
+  const isFormData = options.body instanceof FormData;
+
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    // ◄ THE FIX: Exclude application/json if sending files so the browser writes boundaries automatically
+    ...(!isFormData && { 'Content-Type': 'application/json' }),
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
@@ -22,10 +26,14 @@ async function fetchClient(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP operational failure: ${response.status}`);
+    // Gracefully handle string arrays thrown by NestJS ValidationPipe layers
+    const friendlyMessage = Array.isArray(errorData.message)
+      ? errorData.message.join(', ')
+      : errorData.message;
+      
+    throw new Error(friendlyMessage || `HTTP operational failure: ${response.status}`);
   }
 
-  // Return parsed JSON payload data if content exists
   return response.status !== 204 ? await response.json() : null;
 }
 
@@ -38,7 +46,15 @@ export const api = {
   
   // Student Ticket Management Handlers
   tickets: {
-    create: (payload: object) => fetchClient('/tickets/submit', { method: 'POST', body: JSON.stringify(payload) }),
+    // ◄ ACCEPT DYNAMIC PAYLOAD TYPES (Allows standard JSON objects or multi-part FormData maps)
+    create: (payload: FormData | object) => {
+      const isFormData = payload instanceof FormData;
+      return fetchClient('/tickets/submit', { 
+        method: 'POST', 
+        // ◄ If it's FormData, pass it raw. Otherwise, encode it to a standard JSON string.
+        body: isFormData ? payload : JSON.stringify(payload) 
+      });
+    },
     getStudentQueue: () => fetchClient('/tickets/student'),
     getDepartmentQueue: () => fetchClient('/tickets/department'),
     updateStatus: (id: string, payload: { status: string; comment?: string }) => 
