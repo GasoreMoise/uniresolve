@@ -9,12 +9,14 @@ interface Ticket {
   serviceName: string;
   category: string;    
   description: string;
-  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'RESOLVED';
+  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'RESOLVED' | 'REJECTED';
   createdAt: string;
+  // ◄ UPDATED STRUCTURAL PAIR SCHEMAS
   history?: Array<{
     id: string;
     comment: string;
-    createdAt: string;
+    newState: string;
+    changedAt: string;
   }>;
 }
 
@@ -39,7 +41,7 @@ export default function NotificationInboxTray({ isOpen, onClose, queue, onAction
       <div className="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-slate-800">
         <div className="flex items-center gap-2 font-bold tracking-wide">
           <Bell size={14} className="text-blue-400" />
-          <span>In-App Resolution Inbox</span>
+          <span>Inbox</span>
           {actionableAlerts.length > 0 && (
             <span className="bg-red-500 text-white font-mono text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">
               {actionableAlerts.length}

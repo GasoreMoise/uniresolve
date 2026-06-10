@@ -132,7 +132,7 @@ export default function DedicatedApplicationTerminal() {
           UNIRESOLVE
         </div>
         <button onClick={() => router.push('/')} className="text-xs text-white/80 hover:text-white flex items-center gap-1 bg-transparent border-none cursor-pointer transition">
-          <ArrowLeft size={14} /> Return to Hub
+          <ArrowLeft size={14} /> Return
         </button>
       </header>
 
@@ -157,7 +157,7 @@ export default function DedicatedApplicationTerminal() {
                   {isTranscriptRequest && <FileSpreadsheet className="text-[#2B35AF]" size={22} />}
                   {isInternationalCompliance && <Globe className="text-indigo-600" size={22} />}
                   {!isFinancialGateway && !isCardReplacement && !isSpecialAssessment && !isAssessmentClaim && !isAbsencePermission && !isRecommendation && !isGateManagement && !isClassAllocation && !isTranscriptRequest && !isInternationalCompliance && <FileText className="text-[#2B35AF]" size={22} />}
-                  Form Terminal: {cleanService}
+                  {cleanService}
                 </h1>
                 {isAbsencePermission && (
                   <p className="text-[11px] text-slate-400 font-normal mt-1 leading-relaxed">
@@ -166,7 +166,7 @@ export default function DedicatedApplicationTerminal() {
                 )}
                 {isFinancialGateway && (
                   <p className="text-[11px] text-slate-400 font-normal mt-1 leading-relaxed">
-                    This claim is routed through secure filters directly onto the **Finance & Accounts Desk** for instant reconciliation.
+                    This claim is routed through secure filters directly onto the Finance & Accounts Desk for instant reconciliation.
                   </p>
                 )}
               </div>

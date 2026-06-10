@@ -1,29 +1,33 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Send, Upload, Loader2, MessageSquare, AlertTriangle, CornerDownRight } from 'lucide-react';
+import { X, Send, Upload, Loader2, AlertTriangle, CornerDownRight } from 'lucide-react';
 import { api } from '../config/api';
 
 interface Ticket {
+  id: string;
+  trackingCode: string;
+  serviceName: string;
+  category: string;     
+  description: string;
+  // ◄ ACCEPTS ALL INCOMING EXTENDED STATUS TIERS
+  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'RESOLVED' | 'REJECTED';
+  createdAt: string;
+  // ◄ SYNCHRONIZED MATRIX KEYS ATTACHED HERE
+  history?: Array<{
     id: string;
-    trackingCode: string;
-    serviceName: string;
-    category: string;     
-    description: string;
-    status: string;
-    history?: Array<{
-      id: string;
-      comment: string;
-      createdAt: string;
-    }>;
-  }
+    comment: string;
+    newState: string;
+    changedAt: string;
+  }>;
+}
   
-  interface ModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    ticket: Ticket | null;
-    onResubmitted: () => void;
-  }
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  ticket: Ticket | null;
+  onResubmitted: () => void;
+}
 
 export default function StudentResolutionModal({ isOpen, onClose, ticket, onResubmitted }: ModalProps) {
   const [comment, setComment] = useState('');
@@ -33,7 +37,7 @@ export default function StudentResolutionModal({ isOpen, onClose, ticket, onResu
 
   if (!isOpen || !ticket) return null;
 
-  // ◄ CAPTURE THE LATEST OFFICER COMMENT FROM THE TOP OF THE LOG MATRIX
+  // CAPTURE THE LATEST OFFICER COMMENT FROM THE TOP OF THE LOG MATRIX
   const latestOfficerFeedback = ticket.history && ticket.history.length > 0 
     ? ticket.history[0].comment 
     : 'No additional instructions specified by the department desk reviewer.';
@@ -94,11 +98,11 @@ export default function StudentResolutionModal({ isOpen, onClose, ticket, onResu
             <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block text-xs text-amber-950 mb-0.5">Faculty Audit Statement Notice:</span>
-              Action is required on your <b>{ticket.serviceName}</b> claim file. Review instructions below, correct errors, and append your updated artifacts.
+              Action is required on your <b>{ticket.serviceName.replace(/_/g, ' ')}</b> claim file. Review instructions below, correct errors, and append your updated artifacts.
             </div>
           </div>
 
-          {/* ◄ THE ADDITION: Elegant high-contrast container showing the exact officer comment statement string */}
+          {/* Elegant high-contrast container showing the exact officer comment statement string */}
           <div className="space-y-1.5 bg-slate-900 text-slate-100 p-3.5 rounded border border-slate-800 shadow-inner font-mono text-[11px] leading-relaxed relative overflow-hidden">
             <div className="text-[9px] uppercase tracking-wider font-bold text-blue-400 border-b border-slate-800 pb-1.5 mb-2 flex items-center gap-1">
               <CornerDownRight size={10} /> Desk Officer Feedback Comments

@@ -10,7 +10,7 @@ interface Ticket {
   serviceName: string;
   category: string;
   description: string;
-  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'RESOLVED';
+  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'RESOLVED' | 'REJECTED';
   createdAt: string;
   student: {
     fullName: string;

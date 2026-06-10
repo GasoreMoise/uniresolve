@@ -1,17 +1,10 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
-/**
- * Enhanced fetch client helper that enforces secure header configuration profiles
- * Dynamically handles multi-part form payloads for file asset integration.
- */
 async function fetchClient(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('uniresolve_token') : null;
-
-  // ◄ Check if the incoming body is an instance of browser FormData
   const isFormData = options.body instanceof FormData;
 
   const headers: HeadersInit = {
-    // ◄ THE FIX: Exclude application/json if sending files so the browser writes boundaries automatically
     ...(!isFormData && { 'Content-Type': 'application/json' }),
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
@@ -26,7 +19,6 @@ async function fetchClient(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    // Gracefully handle string arrays thrown by NestJS ValidationPipe layers
     const friendlyMessage = Array.isArray(errorData.message)
       ? errorData.message.join(', ')
       : errorData.message;
@@ -38,20 +30,20 @@ async function fetchClient(endpoint: string, options: RequestInit = {}) {
 }
 
 export const api = {
-  // Authentication Request Handlers
   auth: {
     login: (payload: object) => fetchClient('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
     register: (payload: object) => fetchClient('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   },
   
-  // Student Ticket Management Handlers
+  users: {
+    getLecturers: () => fetchClient('/auth/lecturers', { method: 'GET' }),
+  },
+  
   tickets: {
-    // ◄ ACCEPT DYNAMIC PAYLOAD TYPES (Allows standard JSON objects or multi-part FormData maps)
     create: (payload: FormData | object) => {
       const isFormData = payload instanceof FormData;
       return fetchClient('/tickets/submit', { 
         method: 'POST', 
-        // ◄ If it's FormData, pass it raw. Otherwise, encode it to a standard JSON string.
         body: isFormData ? payload : JSON.stringify(payload) 
       });
     },
@@ -59,5 +51,18 @@ export const api = {
     getDepartmentQueue: () => fetchClient('/tickets/department'),
     updateStatus: (id: string, payload: { status: string; comment?: string }) => 
       fetchClient(`/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
+
+    resolveSpecialAssessment: (id: string, payload: { date: string; venue: string; notes?: string }) =>
+      fetchClient(`/tickets/${id}/resolve-assessment`, { method: 'PATCH', body: JSON.stringify(payload) }),
+
+    submitReviewDecision: (id: string, payload: { status: 'REJECTED' | 'ACTION_REQUIRED'; comment: string }) =>
+      fetchClient(`/tickets/${id}/review-decision`, { method: 'PATCH', body: JSON.stringify(payload) }),
+
+    resolveExamClaim: (id: string, payload: { isMarkAltered: boolean; revisedMarkInfo?: string; notes: string }) =>
+      fetchClient(`/tickets/${id}/resolve-exam-claim`, { method: 'PATCH', body: JSON.stringify(payload) }),
+
+    // ◄ NEW: TRANSCRIPT WORKFLOW VERIFICATION CHANNEL INTERFACE ROUTE MAPPING
+    resolveTranscriptRequest: (id: string, payload: { decision: 'APPROVED' | 'REJECTED'; reason?: string }) =>
+      fetchClient(`/tickets/${id}/resolve-transcript`, { method: 'PATCH', body: JSON.stringify(payload) }),
   }
 };
