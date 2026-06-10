@@ -448,7 +448,7 @@ export default function StudentServicesCatalogHub() {
                                               </div>
                                               <div className="bg-white p-3.5 rounded border border-emerald-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                                 <div className="space-y-1">
-                                                  <div className="text-slate-900 font-bold">Provisional Result Matrix Registry Logs Locked</div>
+                                                  <div className="text-slate-900 font-bold">Provisional Result Registry Approved</div>
                                                   <p className="text-slate-400 text-[10.5px] font-normal leading-normal">
                                                     Your official statement PDF file matching UR grid structures has been reviewed by the HOD and compiled cleanly for download.
                                                   </p>
