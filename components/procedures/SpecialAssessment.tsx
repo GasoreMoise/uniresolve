@@ -6,8 +6,8 @@ import { Upload, FileText, Send, Loader2, BookOpen, HelpCircle, AlertCircle } fr
 interface ProcedureProps {
   cleanService: string;
   isSubmitting: boolean;
-  onSubmit: (formData: { description: string; files: File[]; moduleId?: string }) => void; // ◄ Updated to include moduleId
-  profile?: any; // ◄ Inject the student profile matrix
+  onSubmit: (formData: { description: string; files: File[]; moduleId?: string }) => void;
+  profile?: any;
 }
 
 export default function SpecialAssessmentProcedureForm({ cleanService, isSubmitting, onSubmit, profile }: ProcedureProps) {
@@ -17,6 +17,9 @@ export default function SpecialAssessmentProcedureForm({ cleanService, isSubmitt
   // Dynamic State driven by the Profile
   const [selectedModuleId, setSelectedModuleId] = useState('');
   const [absenceReason, setAbsenceReason] = useState('MEDICAL_EMERGENCY');
+  
+  // ◄ NEW: State to hold the custom reason if "Other" is selected
+  const [customReason, setCustomReason] = useState('');
 
   const handleFilePicker = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) setFiles(Array.from(e.target.files));
@@ -30,7 +33,6 @@ export default function SpecialAssessmentProcedureForm({ cleanService, isSubmitt
       return;
     }
 
-    // Extract the full module details from the profile based on the selected ID
     const selectedRegistration = profile?.registeredModules?.find(
       (reg: any) => reg.module.id === selectedModuleId
     );
@@ -39,6 +41,9 @@ export default function SpecialAssessmentProcedureForm({ cleanService, isSubmitt
     const moduleCode = selectedRegistration ? selectedRegistration.module.code : 'N/A';
     const lecturerName = selectedRegistration?.module.lecturer?.fullName || 'Unassigned Faculty Member';
 
+    // ◄ Check if "Other" is selected and swap in the custom reason
+    const finalReason = absenceReason === 'OTHER' ? customReason : absenceReason.replace(/_/g, ' ');
+
     const structuredNarrative = `
 [SPECIAL ASSESSMENT REQUEST]
 --------------------------------------------------
@@ -46,13 +51,12 @@ export default function SpecialAssessmentProcedureForm({ cleanService, isSubmitt
 * Module Title: ${moduleName}
 * Module Reference Code: ${moduleCode.toUpperCase()}
 * Course Lecturer-in-Charge: ${lecturerName}
-* Primary Justification Motive: ${absenceReason.replace(/_/g, ' ')}
+* Primary Justification Motive: ${finalReason}
 
 * Detailed Timeline & Case Justification:
 ${description}
     `.trim();
 
-    // ◄ Submit the structured narrative, the files, AND the database moduleId link
     onSubmit({ 
       description: structuredNarrative, 
       files, 
@@ -139,14 +143,32 @@ ${description}
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Reason for Missing Assessment *</label>
             <select 
               value={absenceReason}
-              onChange={(e) => setAbsenceReason(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] text-slate-800 font-medium"
+              onChange={(e) => {
+                setAbsenceReason(e.target.value);
+                if (e.target.value !== 'OTHER') setCustomReason(''); // Clear custom input if they switch away
+              }}
+              className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] text-slate-800 font-medium transition"
             >
               <option value="MEDICAL_EMERGENCY">Medical Emergency / Hospitalization</option>
               <option value="BEREAVEMENT">Family Bereavement / Social Hardship</option>
               <option value="OFFICIAL_REPRESENTATION">Institutional University Representation</option>
               <option value="FINANCIAL_LOCKOUT">Financial Clearance Delay / System Loop</option>
+              <option value="OTHER">Other (Please specify)</option>
             </select>
+
+            {/* ◄ NEW: Conditional Custom Input Field */}
+            {absenceReason === 'OTHER' && (
+              <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                <input 
+                  required
+                  type="text" 
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  placeholder="Please briefly state your reason..."
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] text-slate-800 font-medium transition"
+                />
+              </div>
+            )}
           </div>
           
         </div>
@@ -163,7 +185,7 @@ ${description}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Provide a clear and formal explanation detailing why you missed the assessment and your request for a makeup window..."
-          className="w-full text-sm p-3 border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] bg-white text-slate-800 transition"
+          className="w-full text-sm p-3 border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] bg-white text-slate-800 transition resize-none"
         />
       </div>
 

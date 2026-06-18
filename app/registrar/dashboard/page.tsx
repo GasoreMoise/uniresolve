@@ -62,9 +62,8 @@ export default function RegistrarDashboard() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('uniresolve_token');
-      const role = localStorage.getItem('user_role');
-      const name = localStorage.getItem('user_fullName');
       const dept = localStorage.getItem('user_department');
+      const name = localStorage.getItem('user_fullName');
 
       if (!token || dept !== 'REGISTRAR') {
         router.push('/');
@@ -130,7 +129,6 @@ export default function RegistrarDashboard() {
   return (
     <div className="min-h-screen w-full bg-slate-100 text-slate-900 font-sans flex flex-col justify-between overflow-x-hidden select-none">
       
-      {/* SECURE HEADER BAR */}
       <header className="bg-slate-900 text-white px-8 py-4 flex justify-between items-center shrink-0 border-b border-slate-800">
         <div className="flex items-center gap-3">
           <div className="text-md font-black tracking-widest text-[#2B35AF] flex items-center gap-2">
@@ -153,10 +151,8 @@ export default function RegistrarDashboard() {
         </div>
       </header>
 
-      {/* MAIN LAYOUT GATEWAY CONTAINER */}
       <main className="grow max-w-6xl w-full mx-auto px-6 py-10 space-y-6">
         
-        {/* Interactive Real-time Counter Grid Panel */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div 
             onClick={() => toggleStatusFilter('PENDING')}
@@ -192,7 +188,6 @@ export default function RegistrarDashboard() {
           </div>
         </div>
 
-        {/* Global Registry Search Controls */}
         <div className="flex justify-between items-center gap-4 bg-white border border-slate-200 p-4 rounded shadow-sm">
           <div className="relative w-full max-w-md flex items-center gap-3">
             <div className="relative w-full">
@@ -222,7 +217,6 @@ export default function RegistrarDashboard() {
           </button>
         </div>
 
-        {/* SPLIT GRID: CATEGORY BOXES / TABLE + INSPECTION PANEL */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           <div className={`${inspectingTicket ? 'lg:col-span-7' : 'lg:col-span-12'} transition-all duration-300`}>
@@ -310,7 +304,7 @@ export default function RegistrarDashboard() {
                                 onClick={(e) => { e.stopPropagation(); setInspectingTicket(ticket); }} 
                                 className="inline-flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded text-[10px] uppercase tracking-wide transition cursor-pointer border-none shadow-none"
                               >
-                                <Eye size={11} /> View Card
+                                <Eye size={11} /> View
                               </button>
                             </td>
                           </tr>
@@ -391,13 +385,29 @@ export default function RegistrarDashboard() {
                   <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Execute Registry Decision Workflow</span>
                   <div className="grid grid-cols-1 gap-2">
                     
+                    {/* ◄ STEP 1 OF 2: REGISTRAR VERIFIES TRANSCRIPT FEE AND FORWARDS TO HOD ► */}
                     {inspectingTicket.serviceName.toLowerCase().includes('transcript') ? (
-                      <button 
-                        onClick={() => setActiveModal('TRANSCRIPT_RESOLVE')}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
-                      >
-                        ✔ Review & Approve Transcript Release
-                      </button>
+                      inspectingTicket.status === 'SUBMITTED' ? (
+                        <button 
+                          onClick={async () => {
+                            if(window.confirm("Verify that the bank slip is valid and clear this request for HOD academic audit?")) {
+                              await api.tickets.updateStatus(inspectingTicket.id, {
+                                status: 'UNDER_REVIEW',
+                                comment: 'Administrative processing fee verified by Registrar. Cleared and forwarded to HOD for academic review.'
+                              });
+                              setInspectingTicket(null);
+                              fetchDepartmentQueue();
+                            }
+                          }}
+                          className="w-full bg-[#2B35AF] hover:bg-blue-800 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
+                        >
+                          ✔ Verify Fee & Forward to HOD
+                        </button>
+                      ) : (
+                        <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded text-center text-[10px] font-bold uppercase tracking-wide">
+                          Fee Verified. Awaiting HOD Academic Audit.
+                        </div>
+                      )
                     ) : inspectingTicket.serviceName.toLowerCase().includes('card') ? (
                       // SPECIFIC ACTION FOR CARD REPLACEMENT
                       <button 
@@ -415,20 +425,23 @@ export default function RegistrarDashboard() {
                       </button>
                     )}
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button 
-                        onClick={() => setActiveModal('ACTION_REQUIRED')}
-                        className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
-                      >
-                        ⚠ Require Action
-                      </button>
-                      <button 
-                        onClick={() => setActiveModal('REJECT')}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
-                      >
-                        ✖ Refuse Request
-                      </button>
-                    </div>
+                    {/* Show refusal buttons only if it hasn't been forwarded yet */}
+                    {(!inspectingTicket.serviceName.toLowerCase().includes('transcript') || inspectingTicket.status === 'SUBMITTED') && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => setActiveModal('ACTION_REQUIRED')}
+                          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
+                        >
+                          ⚠ Require Action
+                        </button>
+                        <button 
+                          onClick={() => setActiveModal('REJECT')}
+                          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
+                        >
+                          ✖ Refuse Request
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -447,26 +460,6 @@ export default function RegistrarDashboard() {
           ticketId={inspectingTicket.id}
           studentName={inspectingTicket.student.fullName}
           moduleCode={inspectingTicket.trackingCode}
-          onClose={() => setActiveModal('NONE')}
-          onSuccess={() => { setActiveModal('NONE'); fetchDepartmentQueue(); }}
-        />
-      )}
-
-      {activeModal === 'EXAM_RESOLVE' && inspectingTicket && (
-        <ResolveExamClaimModal 
-          ticketId={inspectingTicket.id}
-          studentName={inspectingTicket.student.fullName}
-          trackingCode={inspectingTicket.trackingCode}
-          onClose={() => setActiveModal('NONE')}
-          onSuccess={() => { setActiveModal('NONE'); fetchDepartmentQueue(); }}
-        />
-      )}
-
-      {activeModal === 'TRANSCRIPT_RESOLVE' && inspectingTicket && (
-        <ResolveTranscriptModal 
-          ticketId={inspectingTicket.id}
-          studentName={inspectingTicket.student.fullName}
-          trackingCode={inspectingTicket.trackingCode}
           onClose={() => setActiveModal('NONE')}
           onSuccess={() => { setActiveModal('NONE'); fetchDepartmentQueue(); }}
         />

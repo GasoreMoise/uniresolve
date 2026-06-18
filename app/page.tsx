@@ -244,8 +244,8 @@ export default function StudentServicesCatalogHub() {
           </button>
           
           <div className="relative">
-            <button onClick={() => setIsInboxOpen(!isInboxOpen)} className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition cursor-pointer relative border-none">
-              <Bell size={14} />
+            <button onClick={() => setIsInboxOpen(!isInboxOpen)} className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition cursor-pointer relative border-none" title="Inbox">
+              <Bell size={20} />
               {criticalCount > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#2B35AF] animate-pulse" />}
             </button>
             <NotificationInboxTray isOpen={isInboxOpen} onClose={() => setIsInboxOpen(false)} queue={queue} onActionClick={triggerResolutionPanel} />
@@ -254,9 +254,9 @@ export default function StudentServicesCatalogHub() {
           <button 
             onClick={() => router.push('/student/profile')} 
             className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition cursor-pointer border-none"
-            title="View Institutional Profile"
+            title="View Student Profile"
           >
-            <User size={14} />
+            <User size={20} />
           </button>
 
           <span className="text-xs font-medium text-white/80 hidden sm:inline">Welcome, <b>{studentName}</b></span>

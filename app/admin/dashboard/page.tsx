@@ -138,7 +138,7 @@ export default function SuperAdminDashboard() {
       <header className="bg-slate-900 text-white px-8 py-4 flex flex-col sm:flex-row justify-between items-center shrink-0 border-b border-slate-800 gap-4">
         <div className="flex items-center gap-3">
           <div className="text-md font-black tracking-widest text-[#2B35AF] flex items-center gap-2">
-            <ShieldAlert size={20} className="text-red-500" /> SYSTEM OVERSEER
+            <ShieldAlert size={20} className="text-red-500" /> SYSTEM ADMIN
           </div>
           <span className="text-[10px] bg-red-900/50 border border-red-800 text-red-200 font-mono px-2 py-0.5 rounded uppercase tracking-widest">
             GLOBAL ACCESS

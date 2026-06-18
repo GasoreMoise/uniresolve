@@ -8,6 +8,7 @@ import { api } from '../../../config/api';
 import ResolveAssessmentModal from '@/components/admin/ResolveAssessmentModal';
 import LecturerFeedbackModal from '@/components/admin/LecturerFeedbackModal';
 import ResolveExamClaimModal from '@/components/admin/ResolveExamClaimModal';
+import ResolveTranscriptModal from '@/components/admin/ResolveTranscriptModal'; // ◄ Imported for Transcripts
 
 interface Ticket {
   id: string;
@@ -37,7 +38,7 @@ export default function HODDashboard() {
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [inspectingTicket, setInspectingTicket] = useState<Ticket | null>(null);
-  const [activeModal, setActiveModal] = useState<'NONE' | 'APPROVE' | 'REJECT' | 'ACTION_REQUIRED' | 'EXAM_RESOLVE'>('NONE');
+  const [activeModal, setActiveModal] = useState<'NONE' | 'APPROVE_ASSESSMENT' | 'REJECT' | 'ACTION_REQUIRED' | 'EXAM_RESOLVE' | 'TRANSCRIPT_RESOLVE'>('NONE');
 
   const fetchDepartmentQueue = async () => {
     setIsLoading(true);
@@ -79,6 +80,23 @@ export default function HODDashboard() {
   const handleLogout = () => {
     localStorage.clear();
     router.push('/auth');
+  };
+
+  // Generic fast approval for standard non-assessment tickets
+  const handleGenericApprove = async () => {
+    if (!inspectingTicket) return;
+    if (window.confirm("Confirm official approval of this academic request?")) {
+      try {
+        await api.tickets.updateStatus(inspectingTicket.id, {
+          status: 'RESOLVED',
+          comment: 'Academic request formally reviewed and approved by the Head of Department.'
+        });
+        setInspectingTicket(null);
+        fetchDepartmentQueue();
+      } catch (error) {
+        alert("Failed to process approval.");
+      }
+    }
   };
 
   const totalOpen = queue.filter(t => t.status === 'SUBMITTED' || t.status === 'UNDER_REVIEW').length;
@@ -292,7 +310,7 @@ export default function HODDashboard() {
                                 onClick={(e) => { e.stopPropagation(); setInspectingTicket(ticket); }} 
                                 className="inline-flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded text-[10px] uppercase tracking-wide transition cursor-pointer border-none shadow-none"
                               >
-                                <Eye size={11} /> View Card
+                                <Eye size={11} /> View
                               </button>
                             </td>
                           </tr>
@@ -373,36 +391,64 @@ export default function HODDashboard() {
                   <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Execute Registry Decision Workflow</span>
                   <div className="grid grid-cols-1 gap-2">
                     
-                    {inspectingTicket.serviceName.toLowerCase().includes('claim') ? (
+                    {/* ◄ STEP 2 OF 2: HOD AUDITS GRADES AND GENERATES TRANSCRIPT ONLY AFTER REGISTRAR VERIFIES ► */}
+                    {inspectingTicket.serviceName.toLowerCase().includes('transcript') ? (
+                      inspectingTicket.status === 'SUBMITTED' ? (
+                        <div className="p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded text-center text-[10px] font-bold uppercase tracking-wide">
+                          Awaiting Registrar Verification
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => setActiveModal('TRANSCRIPT_RESOLVE')}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
+                        >
+                          ✔ Audit Grades & Generate Transcript
+                        </button>
+                      )
+                    ) : inspectingTicket.serviceName.toLowerCase().includes('claim') ? (
+                      // STANDARD CLAIMS LOGIC
                       <button 
                         onClick={() => setActiveModal('EXAM_RESOLVE')}
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
                       >
                         ✔ Audit & Resolve Marks Claim
                       </button>
-                    ) : (
+                    ) : (inspectingTicket.serviceName.toLowerCase().includes('special') || inspectingTicket.serviceName.toLowerCase().includes('assessment')) ? (
+                      // SPECIAL ASSESSMENT (Time & Venue needed)
                       <button 
-                        onClick={() => setActiveModal('APPROVE')}
+                        onClick={() => setActiveModal('APPROVE_ASSESSMENT')}
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
                       >
                         ✔ Approve & Schedule Assessment
                       </button>
+                    ) : (
+                      // ◄ FIXED FALLBACK: GENERIC FAST APPROVAL FOR EVERYTHING ELSE
+                      <button 
+                        onClick={handleGenericApprove}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
+                      >
+                        ✔ Approve Request
+                      </button>
                     )}
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button 
-                        onClick={() => setActiveModal('ACTION_REQUIRED')}
-                        className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
-                      >
-                        ⚠ Require Action
-                      </button>
-                      <button 
-                        onClick={() => setActiveModal('REJECT')}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
-                      >
-                        ✖ Refuse Request
-                      </button>
-                    </div>
+                    {/* Show refusal buttons only if it's their turn to process it */}
+                    {(!inspectingTicket.serviceName.toLowerCase().includes('transcript') || inspectingTicket.status === 'UNDER_REVIEW') && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => setActiveModal('ACTION_REQUIRED')}
+                          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
+                        >
+                          ⚠ Require Action
+                        </button>
+                        <button 
+                          onClick={() => setActiveModal('REJECT')}
+                          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded text-center transition cursor-pointer border-none uppercase tracking-wide text-[10px]"
+                        >
+                          ✖ Refuse Request
+                        </button>
+                      </div>
+                    )}
+
                   </div>
                 </div>
               ) : (
@@ -416,7 +462,7 @@ export default function HODDashboard() {
       </main>
 
       {/* MODAL MOUNT ROUTER */}
-      {activeModal === 'APPROVE' && inspectingTicket && (
+      {activeModal === 'APPROVE_ASSESSMENT' && inspectingTicket && (
         <ResolveAssessmentModal 
           ticketId={inspectingTicket.id}
           studentName={inspectingTicket.student.fullName}
@@ -428,6 +474,17 @@ export default function HODDashboard() {
 
       {activeModal === 'EXAM_RESOLVE' && inspectingTicket && (
         <ResolveExamClaimModal 
+          ticketId={inspectingTicket.id}
+          studentName={inspectingTicket.student.fullName}
+          trackingCode={inspectingTicket.trackingCode}
+          onClose={() => setActiveModal('NONE')}
+          onSuccess={() => { setActiveModal('NONE'); fetchDepartmentQueue(); }}
+        />
+      )}
+
+      {/* ◄ NEW: Transcript Modal mapped for the HOD */}
+      {activeModal === 'TRANSCRIPT_RESOLVE' && inspectingTicket && (
+        <ResolveTranscriptModal 
           ticketId={inspectingTicket.id}
           studentName={inspectingTicket.student.fullName}
           trackingCode={inspectingTicket.trackingCode}

@@ -1,4 +1,4 @@
-import { GraduationCap, Landmark, Settings, HelpCircle } from 'lucide-react';
+import { GraduationCap, Landmark, Settings, HelpCircle, FileSignature } from 'lucide-react';
 
 export interface ServiceItem {
   id: string;
@@ -13,7 +13,7 @@ export interface ServiceCategory {
 
 export const servicesData: ServiceCategory[] = [
   {
-    title: 'Academic Progression & Verification',
+    title: 'Academic Assessments & Claims',
     icon: GraduationCap,
     items: [
       { id: 'SPECIAL_QUIZ', name: 'Special Quiz' },
@@ -22,8 +22,14 @@ export const servicesData: ServiceCategory[] = [
       { id: 'CAT_CLAIMS', name: 'CAT Claims' },
       { id: 'EXAM_CLAIMS', name: 'Exam Claims' },
       { id: 'DIPLOMA_EQUIVALENCE', name: 'Diploma Equivalence' },
+    ],
+  },
+  {
+    title: 'Registrar & Student Records',
+    icon: FileSignature,
+    items: [
       { id: 'TRANSCRIPT_REQUEST', name: 'Transcript Request' },
-      // ◄ FIXED: Moved Card Replacement here so it natively routes to the Registrar
+      { id: 'STUDENT_REGISTRATION', name: 'Student Registration' },
       { id: 'CARD_REPLACEMENT', name: 'Card Replacement' }, 
     ],
   },
@@ -31,8 +37,6 @@ export const servicesData: ServiceCategory[] = [
     title: 'Administrative & Operational Requests',
     icon: Settings,
     items: [
-      { id: 'STUDENT_REGISTRATION', name: 'Student Registration' },
-      // (Card Replacement removed from here)
       { id: 'PERMISSION_REQUEST', name: 'Permission Request' },
       { id: 'GATE_MANAGEMENT', name: 'Gate Management' },
       { id: 'CLASS_ALLOCATION', name: 'Class Allocation' },
