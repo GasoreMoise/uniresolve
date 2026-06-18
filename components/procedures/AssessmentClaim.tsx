@@ -1,56 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { FileText, Upload, Send, Loader2, ClipboardCheck, HelpCircle, Landmark } from 'lucide-react';
-import { api } from '../../config/api';
+import React, { useState } from 'react';
+import { FileText, Upload, Loader2, ClipboardCheck, HelpCircle, Landmark, AlertCircle } from 'lucide-react';
 
+// ◄ 1. UPDATED INTERFACE: Added 'profile' and updated 'onSubmit' payload
 interface ProcedureProps {
   cleanService: string;
   isSubmitting: boolean;
-  onSubmit: (formData: { description: string; files: File[] }) => void;
+  onSubmit: (formData: { description: string; files: File[]; moduleId?: string }) => void;
+  profile?: any; 
 }
 
-interface LecturerProfile {
-  id: string;
-  fullName: string;
-  department: string;
-}
-
-export default function AssessmentClaimProcedureForm({ cleanService, isSubmitting, onSubmit }: ProcedureProps) {
+export default function AssessmentClaimProcedureForm({ cleanService, isSubmitting, onSubmit, profile }: ProcedureProps) {
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   
   // Custom State Inputs for Assessment Mismatch Claims
-  const [moduleName, setModuleName] = useState('');
-  const [moduleCode, setModuleCode] = useState('');
+  const [selectedModuleId, setSelectedModuleId] = useState(''); // ◄ Replaces moduleName/Code
   const [assessmentType, setAssessmentType] = useState('FINAL_EXAMINATION');
   const [publishedGrade, setPublishedGrade] = useState('');
   const [claimedGrade, setClaimedGrade] = useState('');
-
-  // Dynamic Lecturer Registry Tracking states
-  const [lecturerDirectory, setLecturerDirectory] = useState<LecturerProfile[]>([]);
-  const [selectedLecturerId, setSelectedLecturerId] = useState<string>('');
-  const [isRegistryLoading, setIsRegistryLoading] = useState<boolean>(true);
-  const [registryLoadError, setRegistryLoadError] = useState<boolean>(false);
-
-  // Hook into network registry stream on mount pass
-  useEffect(() => {
-    async function fetchActiveRegistry() {
-      try {
-        const activeLecturers = await api.users.getLecturers();
-        setLecturerDirectory(activeLecturers);
-        if (activeLecturers && activeLecturers.length > 0) {
-          setSelectedLecturerId(activeLecturers[0].id);
-        }
-      } catch (error) {
-        console.error("Could not sync background lecturer registry lookup:", error);
-        setRegistryLoadError(true);
-      } finally {
-        setIsRegistryLoading(false);
-      }
-    }
-    fetchActiveRegistry();
-  }, []);
 
   const handleFilePicker = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) setFiles(Array.from(e.target.files));
@@ -59,17 +28,28 @@ export default function AssessmentClaimProcedureForm({ cleanService, isSubmittin
   const handleSubmitWrapper = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const chosenLecturerObj = lecturerDirectory.find(item => item.id === selectedLecturerId);
-    const resolvedLecturerName = chosenLecturerObj ? chosenLecturerObj.fullName : 'Unlinked Lecturer';
+    if (profile && !selectedModuleId) {
+      alert("Please select the target module for this claim from the dropdown.");
+      return;
+    }
+
+    // Extract the full module details from the profile based on the selected ID
+    const selectedRegistration = profile?.registeredModules?.find(
+      (reg: any) => reg.module.id === selectedModuleId
+    );
+
+    const moduleName = selectedRegistration ? selectedRegistration.module.title : 'N/A';
+    const moduleCode = selectedRegistration ? selectedRegistration.module.code : 'N/A';
+    const lecturerName = selectedRegistration?.module.lecturer?.fullName || 'Unassigned Faculty Member';
 
     // Enforce structured parameter logging for clear back-office audits
     const structuredNarrative = `
 [CUSTOM PROCEDURE: ASSESSMENT & MARKS CLAIM]
 --------------------------------------------------
 * Target Claim Stream: ${cleanService}
-* Module Title: ${moduleName || 'N/A'}
-* Module Reference Code: ${moduleCode.toUpperCase() || 'N/A'}
-* Course Lecturer-in-Charge: ${resolvedLecturerName}
+* Module Title: ${moduleName}
+* Module Reference Code: ${moduleCode.toUpperCase()}
+* Course Lecturer-in-Charge: ${lecturerName}
 * Impacted Component: ${assessmentType.replace(/_/g, ' ')}
 * Published Grade State: ${publishedGrade || 'Zero / Missing'}
 * Claimed Expected Grade: ${claimedGrade || 'Unknown'}
@@ -78,7 +58,12 @@ export default function AssessmentClaimProcedureForm({ cleanService, isSubmittin
 ${description}
     `.trim();
 
-    onSubmit({ description: structuredNarrative, files });
+    // ◄ Submit the structured narrative, files, AND the database moduleId link
+    onSubmit({ 
+      description: structuredNarrative, 
+      files, 
+      moduleId: selectedModuleId || undefined 
+    });
   };
 
   return (
@@ -92,11 +77,10 @@ ${description}
         </div>
         
         <p className="text-slate-500 font-normal leading-normal">
-          Once submitted, your claim is sent to your department head for formal verification. Your issue moves toward complete resolution using these straightforward steps:
+          Once submitted, your claim is sent to your assigned lecturer and department head for formal verification. Your issue moves toward complete resolution using these straightforward steps:
         </p>
 
         <ul className="space-y-2.5 pl-0 list-none font-medium text-slate-600">
-          {/* ◄ UPDATED STEP 1 WITH BANK DEPOSIT RECOGNITION */}
           <li className="flex gap-2 items-start">
             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 shrink-0" />
             <p className="m-0 leading-normal">
@@ -125,63 +109,38 @@ ${description}
           <span>Academic Evaluation Parameters</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
+          
+          {/* ◄ NEW: Dynamic Profile Module Selection Dropdown */}
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Module / Course Title *</label>
-            <input 
-              required
-              type="text"
-              placeholder="e.g., Object Oriented Programming"
-              value={moduleName}
-              onChange={(e) => setModuleName(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] text-slate-800 font-medium"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Module Code *</label>
-            <input 
-              required
-              type="text" 
-              placeholder="e.g., CSC311"
-              value={moduleCode}
-              onChange={(e) => setModuleCode(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] font-mono font-bold uppercase text-slate-800"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Lecturer-in-Charge *</label>
-            {isRegistryLoading ? (
-              <div className="w-full p-2.5 bg-slate-100 text-slate-400 font-medium italic rounded border border-slate-200 animate-pulse">
-                Loading lecturer list...
-              </div>
-            ) : registryLoadError ? (
-              <div className="w-full p-2.5 bg-red-50 text-red-600 font-medium rounded border border-red-200">
-                Failed to sync active list.
-              </div>
-            ) : (
-              <select
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Target Module / Course *</label>
+            {profile ? (
+              <select 
                 required
-                value={selectedLecturerId}
-                onChange={(e) => setSelectedLecturerId(e.target.value)}
+                value={selectedModuleId}
+                onChange={(e) => setSelectedModuleId(e.target.value)}
                 className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] text-slate-800 font-bold transition"
               >
-                {lecturerDirectory.length === 0 ? (
-                  <option value="">No registered lecturers active</option>
+                <option value="" disabled>-- Select the module from your registry --</option>
+                {profile.registeredModules?.length === 0 ? (
+                  <option value="" disabled>No active modules found in your registry.</option>
                 ) : (
-                  lecturerDirectory.map((lec) => (
-                    <option key={lec.id} value={lec.id}>
-                      {lec.fullName}
+                  profile.registeredModules?.map((reg: any) => (
+                    <option key={reg.module.id} value={reg.module.id}>
+                      {reg.module.code} - {reg.module.title} (Prof. {reg.module.lecturer?.fullName.split(' ')[1] || 'Unassigned'})
                     </option>
                   ))
                 )}
               </select>
+            ) : (
+              <div className="w-full p-2.5 bg-slate-100 text-slate-400 font-medium italic rounded border border-slate-200 flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin" /> Syncing academic registry...
+              </div>
             )}
           </div>
+        </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Evaluation Mode *</label>
             <select 
@@ -235,7 +194,7 @@ ${description}
         />
       </div>
 
-      {/* ◄ NEW: SECURE TEMPLATE BANK DETAILS MATRIX CARD BLOCK */}
+      {/* SECURE TEMPLATE BANK DETAILS MATRIX CARD BLOCK */}
       <div className="p-3.5 bg-slate-900 text-slate-100 rounded border border-slate-800 space-y-1.5 shadow-inner">
         <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-blue-400 text-[10px]">
           <Landmark size={12} />
@@ -280,7 +239,7 @@ ${description}
       <div className="pt-4 border-t border-slate-100 flex justify-end">
         <button 
           type="submit" 
-          disabled={isSubmitting || isRegistryLoading || registryLoadError}
+          disabled={isSubmitting || !profile}
           className="w-full sm:w-auto bg-[#2B35AF] hover:bg-blue-800 disabled:bg-slate-300 text-white font-bold py-3 px-8 rounded uppercase tracking-wider text-xs flex items-center justify-center gap-2 transition shadow-none border-none cursor-pointer"
         >
           {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <>Dispatch Grade Claim</>}

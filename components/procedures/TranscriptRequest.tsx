@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Upload, FileText, Send, Loader2, HelpCircle, Landmark, GraduationCap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, FileText, Send, Loader2, HelpCircle, Landmark, GraduationCap, Lock, AlertTriangle } from 'lucide-react';
+import { api } from '../../config/api';
 
 interface ProcedureProps {
   cleanService: string;
@@ -13,9 +14,35 @@ export default function TranscriptProcedureForm({ cleanService, isSubmitting, on
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   
+  // Auto-populated Profile States
   const [studentRegNo, setStudentRegNo] = useState('');
   const [academicProgram, setAcademicProgram] = useState('');
-  const [academicYear, setAcademicYear] = useState('2025-2026');
+  const [academicYear, setAcademicYear] = useState('');
+  
+  // ◄ NEW: Track Financial Clearance Status
+  const [isCleared, setIsCleared] = useState<boolean | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
+  // Fetch the student's institutional profile on mount
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      try {
+        const profileData = await api.profile.getMe();
+        if (profileData) {
+          setStudentRegNo(profileData.registrationNumber || '');
+          setAcademicProgram(profileData.program || '');
+          setAcademicYear(profileData.academicYear || '2025-2026');
+          setIsCleared(profileData.isFinanciallyCleared); // ◄ Extract clearance status
+        }
+      } catch (error) {
+        console.error('Registry sync failed:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    fetchStudentData();
+  }, []);
 
   const handleFilePicker = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) setFiles(Array.from(e.target.files));
@@ -42,8 +69,21 @@ ${description || 'None specified.'}
   return (
     <form onSubmit={handleSubmitWrapper} className="space-y-5 text-xs text-slate-700 animate-in fade-in duration-200">
       
+      {/* ◄ NEW: UPSTREAM FINANCIAL HOLD BANNER */}
+      {isCleared === false && (
+        <div className="bg-red-50 border border-red-200 p-4 rounded flex items-start gap-3 shadow-inner">
+          <AlertTriangle size={18} className="text-red-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="font-bold text-red-800 uppercase tracking-wide">Active Financial Hold</h4>
+            <p className="text-red-600 font-medium leading-relaxed">
+              Your institutional profile indicates an outstanding financial balance. University protocol dictates that official transcripts cannot be processed or generated until all registration and tuition fees are fully cleared. Please resolve this with the Finance Desk before requesting this service.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* HUMAN-CENTERED VERIFICATION STEPS LIST */}
-      <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded">
+      <div className={`space-y-3 p-4 bg-slate-50 border border-slate-200 rounded ${isCleared === false ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-900 uppercase tracking-wide border-b border-slate-200/60 pb-1.5 mb-1">
           <HelpCircle size={13} className="text-[#2B35AF]" />
           <span>Transcript Generation Steps & Verification Flow</span>
@@ -73,55 +113,59 @@ ${description || 'None specified.'}
         </ul>
       </div>
 
-      {/* Profile Parameters Input Group */}
-      <div className="space-y-4 p-4 bg-slate-50/70 border border-slate-200 rounded">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-900 uppercase tracking-wide border-b border-slate-200/60 pb-1.5 mb-2">
-          <GraduationCap size={13} className="text-[#2B35AF]" />
-          <span>Academic Registration Identification Metadata</span>
+      {/* Profile Parameters Input Group (LOCKED & AUTO-FETCHED) */}
+      <div className={`space-y-4 p-4 bg-slate-50/70 border border-slate-200 rounded relative ${isCleared === false ? 'opacity-50 pointer-events-none' : ''}`}>
+        {isLoadingProfile && (
+          <div className="absolute inset-0 bg-slate-50/80 backdrop-blur-[1px] z-10 flex items-center justify-center rounded">
+            <Loader2 size={20} className="animate-spin text-[#2B35AF]" />
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5 mb-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-900 uppercase tracking-wide">
+            <GraduationCap size={13} className="text-[#2B35AF]" />
+            <span>Academic Registration Identification Metadata</span>
+          </div>
+          <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 uppercase tracking-wider">
+            <Lock size={10} /> Auto-Synced
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Registration Number *</label>
             <input 
-              required
+              readOnly
               type="text"
-              placeholder="e.g., 222013253"
               value={studentRegNo}
-              onChange={(e) => setStudentRegNo(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] font-mono font-bold text-slate-800"
+              className="w-full p-2.5 bg-slate-100/80 border border-slate-200 rounded focus:outline-none font-mono font-bold text-slate-500 cursor-not-allowed"
             />
           </div>
 
           <div className="space-y-1.5">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Degree / Program Title *</label>
             <input 
-              required
+              readOnly
               type="text"
-              placeholder="e.g., BSC.(HONS) COMPUTER SCIENCE"
               value={academicProgram}
-              onChange={(e) => setAcademicProgram(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] font-bold uppercase text-slate-800"
+              className="w-full p-2.5 bg-slate-100/80 border border-slate-200 rounded focus:outline-none font-bold uppercase text-slate-500 cursor-not-allowed"
             />
           </div>
 
           <div className="space-y-1.5">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Target Academic Year *</label>
-            <select
+            <input 
+              readOnly
+              type="text"
               value={academicYear}
-              onChange={(e) => setAcademicYear(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] font-bold text-slate-800"
-            >
-              <option value="2024-2025">2024-2025</option>
-              <option value="2025-2026">2025-2026</option>
-              <option value="2026-2027">2026-2027</option>
-            </select>
+              className="w-full p-2.5 bg-slate-100/80 border border-slate-200 rounded focus:outline-none font-bold text-slate-500 cursor-not-allowed"
+            />
           </div>
         </div>
       </div>
 
       {/* Special Context instructions input */}
-      <div className="space-y-1.5">
+      <div className={`space-y-1.5 ${isCleared === false ? 'opacity-50 pointer-events-none' : ''}`}>
         <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400">Special Notes or Delivery Instructions (Optional)</label>
         <textarea
           rows={3}
@@ -133,7 +177,7 @@ ${description || 'None specified.'}
       </div>
 
       {/* Bank Details Context Layout Port Card */}
-      <div className="p-3.5 bg-slate-900 text-slate-100 rounded border border-slate-800 space-y-1.5 shadow-inner">
+      <div className={`p-3.5 bg-slate-900 text-slate-100 rounded border border-slate-800 space-y-1.5 shadow-inner ${isCleared === false ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-blue-400 text-[10px]">
           <Landmark size={12} />
           <span>Official University Registration Registry Bank Details</span>
@@ -146,7 +190,7 @@ ${description || 'None specified.'}
       </div>
 
       {/* Upload segment proof slip placeholder */}
-      <div className="space-y-1.5">
+      <div className={`space-y-1.5 ${isCleared === false ? 'opacity-50 pointer-events-none' : ''}`}>
         <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400">Upload Processing Deposit Bank Slip Evidence *</label>
         <div className="border-2 border-dashed border-slate-200 rounded p-5 text-center bg-slate-50 hover:bg-slate-100/50 transition relative">
           <input 
@@ -174,8 +218,8 @@ ${description || 'None specified.'}
       <div className="pt-4 border-t border-slate-100 flex justify-end">
         <button 
           type="submit" 
-          disabled={isSubmitting}
-          className="w-full sm:w-auto bg-[#2B35AF] hover:bg-blue-800 disabled:bg-slate-300 text-white font-bold py-3 px-8 rounded uppercase tracking-wider text-xs flex items-center justify-center gap-2 transition border-none cursor-pointer"
+          disabled={isSubmitting || isLoadingProfile || isCleared === false} // ◄ DISABLED IF UNCLEARED
+          className="w-full sm:w-auto bg-[#2B35AF] hover:bg-blue-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded uppercase tracking-wider text-xs flex items-center justify-center gap-2 transition border-none cursor-pointer"
         >
           {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <>Transmit Transcript Request</>}
         </button>

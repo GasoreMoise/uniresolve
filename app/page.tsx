@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, LogOut, Bell, AlertTriangle, Landmark, UserCheck, ShieldAlert, Globe, GraduationCap, ChevronDown, ChevronUp, Calendar, MapPin, ClipboardList, AlertCircle, FileText, CheckCircle2, FileSpreadsheet } from 'lucide-react';
+import { Search, LogOut, Bell, AlertTriangle, Landmark, UserCheck, ShieldAlert, Globe, GraduationCap, ChevronDown, ChevronUp, Calendar, MapPin, ClipboardList, AlertCircle, FileText, CheckCircle2, FileSpreadsheet, User } from 'lucide-react';
 import { api } from '../config/api';
 import NotificationInboxTray from '../components/NotificationInboxTray';
 import StudentResolutionModal from '../components/StudentResolutionModal';
+
+import { useSocket } from '../hooks/useSocket';
 
 interface Ticket {
   id: string;
@@ -16,6 +18,12 @@ interface Ticket {
   status: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACTION_REQUIRED' | 'APPROVED' | 'RESOLVED' | 'REJECTED';
   createdAt: string;
   
+  module?: {
+    code: string;
+    title: string;
+    lecturer?: { fullName: string };
+  };
+
   assessmentDate?: string | null;
   assessmentVenue?: string | null;
   lecturerNotes?: string | null;
@@ -33,6 +41,7 @@ export default function StudentServicesCatalogHub() {
   const router = useRouter();
   const [queue, setQueue] = useState<Ticket[]>([]);
   const [studentName, setStudentName] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
@@ -44,6 +53,8 @@ export default function StudentServicesCatalogHub() {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
+
+  const socket = useSocket(userId || undefined);
 
   const fetchStudentQueue = async () => {
     try {
@@ -63,6 +74,7 @@ export default function StudentServicesCatalogHub() {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('uniresolve_token');
       const name = localStorage.getItem('user_fullName');
+      const id = localStorage.getItem('user_id'); 
       
       if (!token) {
         localStorage.clear();
@@ -72,15 +84,25 @@ export default function StudentServicesCatalogHub() {
       }
       
       setStudentName(name || 'Enrollment Identity');
+      setUserId(id);
       fetchStudentQueue();
     }
   }, [router]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('ticket_updated', () => {
+        fetchStudentQueue();
+      });
+    }
+  }, [socket]);
 
   const handleLogout = () => {
     localStorage.removeItem('uniresolve_token');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_fullName');
     localStorage.removeItem('user_department');
+    localStorage.removeItem('user_id');
     localStorage.clear();
     window.location.href = '/auth';
   };
@@ -122,8 +144,6 @@ export default function StudentServicesCatalogHub() {
             { name: "Student Registration", slug: "student-registration" },
             { name: "Card Replacement", slug: "card-replacement" },
             { name: "Permission Request", slug: "permission-request" },
-            { name: "Gate Management", slug: "gate-management" },
-            { name: "Class Allocation", slug: "class-allocation" },
             { name: "Letter of Recommendation", slug: "letter-of-recommendation" },
           ]
         },
@@ -173,8 +193,6 @@ export default function StudentServicesCatalogHub() {
             { name: "Student Registration", slug: "student-registration" },
             { name: "Card Replacement", slug: "card-replacement" },
             { name: "Permission Request", slug: "permission-request" },
-            { name: "Gate Management", slug: "gate-management" },
-            { name: "Class Allocation", slug: "class-allocation" },
             { name: "Letter of Recommendation", slug: "letter-of-recommendation" },
           ]
         },
@@ -217,7 +235,7 @@ export default function StudentServicesCatalogHub() {
           UNIRESOLVE
         </div>
         
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-6">
           <button 
             onClick={() => setViewMode(viewMode === 'CATALOG' ? 'HISTORY_QUEUE' : 'CATALOG')} 
             className="text-xs text-white/90 hover:text-white font-bold transition bg-transparent border-none cursor-pointer"
@@ -232,6 +250,14 @@ export default function StudentServicesCatalogHub() {
             </button>
             <NotificationInboxTray isOpen={isInboxOpen} onClose={() => setIsInboxOpen(false)} queue={queue} onActionClick={triggerResolutionPanel} />
           </div>
+
+          <button 
+            onClick={() => router.push('/student/profile')} 
+            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition cursor-pointer border-none"
+            title="View Institutional Profile"
+          >
+            <User size={14} />
+          </button>
 
           <span className="text-xs font-medium text-white/80 hidden sm:inline">Welcome, <b>{studentName}</b></span>
           <button onClick={handleLogout} className="flex items-center gap-1 bg-[#FF0000]/80 hover:bg-[#FF0000]/90 border border-white/20 text-white px-2.5 py-1 rounded text-xs transition cursor-pointer">
@@ -397,6 +423,20 @@ export default function StudentServicesCatalogHub() {
                                 <td colSpan={5} className="px-8 py-4 border-t border-slate-100">
                                   <div className="space-y-3 max-w-3xl text-slate-700">
                                     
+                                    {ticket.module && (
+                                      <div className="flex flex-col sm:flex-row gap-4 bg-white p-3 rounded border border-slate-200 shadow-sm mb-4">
+                                        <div className="flex-1">
+                                          <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Targeted Academic Module</span>
+                                          <span className="font-mono font-bold text-[#2B35AF]">{ticket.module.code}</span>
+                                          <span className="font-semibold text-slate-700 ml-1.5">- {ticket.module.title}</span>
+                                        </div>
+                                        <div className="flex-1 sm:border-l sm:border-slate-100 sm:pl-4">
+                                          <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Routed To Assigned Faculty</span>
+                                          <span className="font-bold text-slate-800">{ticket.module.lecturer?.fullName || 'Unassigned'}</span>
+                                        </div>
+                                      </div>
+                                    )}
+
                                     <div className="space-y-1">
                                       <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Your Submitted Statement Payload</span>
                                       <p className="p-3 bg-white border border-slate-200 rounded text-slate-600 font-medium whitespace-pre-wrap leading-relaxed">

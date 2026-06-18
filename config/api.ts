@@ -49,6 +49,7 @@ export const api = {
     },
     getStudentQueue: () => fetchClient('/tickets/student'),
     getDepartmentQueue: () => fetchClient('/tickets/department'),
+    
     updateStatus: (id: string, payload: { status: string; comment?: string }) => 
       fetchClient(`/tickets/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
 
@@ -61,8 +62,35 @@ export const api = {
     resolveExamClaim: (id: string, payload: { isMarkAltered: boolean; revisedMarkInfo?: string; notes: string }) =>
       fetchClient(`/tickets/${id}/resolve-exam-claim`, { method: 'PATCH', body: JSON.stringify(payload) }),
 
-    // ◄ NEW: TRANSCRIPT WORKFLOW VERIFICATION CHANNEL INTERFACE ROUTE MAPPING
     resolveTranscriptRequest: (id: string, payload: { decision: 'APPROVED' | 'REJECTED'; reason?: string }) =>
       fetchClient(`/tickets/${id}/resolve-transcript`, { method: 'PATCH', body: JSON.stringify(payload) }),
-  }
+
+    resolveCardReplacement: (id: string) => 
+      fetchClient(`/tickets/${id}/resolve-card`, { method: 'PATCH' }),
+
+    resubmitTicket: (id: string, payload: any) => 
+      fetchClient(`/tickets/${id}/resubmit`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  },
+
+  profile: {
+    getMe: () => fetchClient('/profile/me', { method: 'GET' }),
+    // ◄ NEW: IAM Endpoints mapped to the profile module
+    getAllUsers: () => fetchClient('/profile/users', { method: 'GET' }),
+    updateRole: (id: string, payload: { role: string; department: string | null }) => 
+      fetchClient(`/profile/users/${id}/role`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  },
+
+  grades: {
+    getRoster: () => fetchClient('/grades/roster', { method: 'GET' }),
+    updateStudentMarks: (moduleId: string, studentId: string, payload: any) => 
+      fetchClient(`/grades/module/${moduleId}/student/${studentId}`, { 
+        method: 'PUT', 
+        body: JSON.stringify(payload) 
+      }),
+  },
+
+  // ◄ NEW: Audit Endpoints
+  audit: {
+    getLogs: () => fetchClient('/audit', { method: 'GET' }),
+  },
 };

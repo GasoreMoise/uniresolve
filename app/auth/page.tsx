@@ -16,7 +16,9 @@ import {
   HelpCircle, 
   Cpu, 
   Clock, 
-  CheckCircle2 
+  CheckCircle2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function AuthenticationPortal() {
@@ -33,14 +35,29 @@ export default function AuthenticationPortal() {
   const [department, setDepartment] = useState<string>('GENERAL_SUPPORT'); 
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
-  // Clear saved login sessions when the page first loads
+  const [showPassword, setShowPassword] = useState(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('uniresolve_token');
       if (token) {
         const cachedRole = localStorage.getItem('user_role');
-        if (cachedRole === 'STAFF' || cachedRole === 'ADMIN' || cachedRole === 'LECTURER') {
-          router.replace('/admin/dashboard');
+        const cachedDept = localStorage.getItem('user_department');
+        
+        if (cachedRole === 'ADMIN') {
+          router.replace('/admin/dashboard'); // ◄ STRICTLY FOR SUPER ADMIN
+        } else if (cachedRole === 'LECTURER') {
+          router.replace('/staff/dashboard');
+        } else if (cachedRole === 'STAFF') {
+          if (cachedDept === 'FINANCE') {
+            router.replace('/finance/dashboard');
+          } else if (cachedDept === 'REGISTRAR') {
+            router.replace('/registrar/dashboard');
+          } else if (cachedDept === 'FACULTY_HOD') {
+            router.replace('/hod/dashboard'); // ◄ NEW HOD ROUTE
+          } else {
+            router.replace('/admin/dashboard'); // Fallback for other support staff
+          }
         } else {
           router.replace('/');
         }
@@ -60,13 +77,26 @@ export default function AuthenticationPortal() {
         localStorage.setItem('uniresolve_token', response.accessToken);
         localStorage.setItem('user_role', response.user.role);
         localStorage.setItem('user_fullName', response.user.fullName);
+        localStorage.setItem('user_id', response.user.id);
         localStorage.setItem('user_department', response.user.department || ''); 
   
-        if (response.user.role === 'STAFF' || response.user.role === 'ADMIN' || response.user.role === 'LECTURER') {
+        // ◄ UPDATED ROUTING SWITCH
+        if (response.user.role === 'ADMIN') {
+          window.location.href = '/admin/dashboard';
+        } else if (response.user.role === 'LECTURER') {
+          window.location.href = '/staff/dashboard';
+        } else if (response.user.department === 'FINANCE') {
+          window.location.href = '/finance/dashboard';
+        } else if (response.user.department === 'REGISTRAR') {
+          window.location.href = '/registrar/dashboard';
+        } else if (response.user.department === 'FACULTY_HOD') {
+          window.location.href = '/hod/dashboard'; // ◄ NEW HOD ROUTE
+        } else if (response.user.role === 'STAFF') {
           window.location.href = '/admin/dashboard';
         } else {
           window.location.href = '/';
         }
+
       } else {
         const registrationPayload = {
           fullName,
@@ -84,6 +114,7 @@ export default function AuthenticationPortal() {
         setPassword('');
         setRole('STUDENT');
         setDepartment('GENERAL_SUPPORT');
+        setShowPassword(false);
         setErrorNotice('Account created successfully! You can now sign in below.');
       }
     } catch (error: any) {
@@ -222,7 +253,7 @@ export default function AuthenticationPortal() {
                   <input 
                     required
                     type="email" 
-                    placeholder={activeTab === 'login' ? 'student@utab.ac.rw or lecturer@utab.ac.rw' : 'yourname@utab.ac.rw'}
+                    placeholder={activeTab === 'login' ? 'student@ur.ac.rw or lecturer@ur.ac.rw' : 'yourname@ur.ac.rw'}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] transition text-slate-800 bg-white"
@@ -257,12 +288,19 @@ export default function AuthenticationPortal() {
                   <Lock size={14} className="absolute inset-y-0 left-3 my-auto text-slate-400" />
                   <input 
                     required
-                    type="password" 
+                    type={showPassword ? "text" : "password"} 
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] transition text-slate-800 bg-white"
+                    className="w-full pl-9 pr-10 py-2.5 border border-slate-300 rounded focus:outline-none focus:border-[#2B35AF] transition text-slate-800 bg-white"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-3 my-auto text-slate-400 hover:text-[#2B35AF] transition bg-transparent border-none cursor-pointer flex items-center justify-center p-0"
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
                 </div>
               </div>
 
@@ -301,18 +339,13 @@ export default function AuthenticationPortal() {
                           {role === 'LECTURER' ? (
                             <>
                               <option value="COMPUTER_SCIENCE">Department of Computer Science</option>
-                              <option value="SOFTWARE_ENGINEERING">Department of Software Engineering</option>
-                              <option value="CIVIL_ENGINEERING">Department of Civil Engineering</option>
-                              <option value="BUSINESS_ADMINISTRATION">Faculty of Business & Economics</option>
                             </>
                           ) : (
                             <>
-                              <option value="REGISTRAR">Registrar Office Desk</option>
-                              <option value="FINANCE">Finance & Accounts Desk</option>
-                              <option value="FACULTY_HOD">Faculty Head of Department (HOD)</option>
-                              <option value="CAMPUS_OPERATIONS">Campus Operations Desk</option>
-                              <option value="ESTATE_MANAGEMENT">Estate Management Office</option>
-                              <option value="GENERAL_SUPPORT">General Support Helpdesk</option>
+                              <option value="FINANCE">CS Finance & Accounts Desk</option>
+                              <option value="FACULTY_HOD">CS Head of Department (HOD)</option>
+                              <option value="REGISTRAR">CS Registrar Office</option>
+                              <option value="GENERAL_SUPPORT">CS General Support Helpdesk</option>
                             </>
                           )}
                         </select>

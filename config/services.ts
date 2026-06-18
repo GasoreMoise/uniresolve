@@ -23,6 +23,8 @@ export const servicesData: ServiceCategory[] = [
       { id: 'EXAM_CLAIMS', name: 'Exam Claims' },
       { id: 'DIPLOMA_EQUIVALENCE', name: 'Diploma Equivalence' },
       { id: 'TRANSCRIPT_REQUEST', name: 'Transcript Request' },
+      // ◄ FIXED: Moved Card Replacement here so it natively routes to the Registrar
+      { id: 'CARD_REPLACEMENT', name: 'Card Replacement' }, 
     ],
   },
   {
@@ -30,7 +32,7 @@ export const servicesData: ServiceCategory[] = [
     icon: Settings,
     items: [
       { id: 'STUDENT_REGISTRATION', name: 'Student Registration' },
-      { id: 'CARD_REPLACEMENT', name: 'Card Replacement' },
+      // (Card Replacement removed from here)
       { id: 'PERMISSION_REQUEST', name: 'Permission Request' },
       { id: 'GATE_MANAGEMENT', name: 'Gate Management' },
       { id: 'CLASS_ALLOCATION', name: 'Class Allocation' },

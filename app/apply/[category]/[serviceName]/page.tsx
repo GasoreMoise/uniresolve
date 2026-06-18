@@ -59,6 +59,9 @@ export default function DedicatedApplicationTerminal() {
   const [isVerifying, setIsVerifying] = useState(true);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // ◄ NEW: Profile State for Module Dropdowns
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -72,7 +75,17 @@ export default function DedicatedApplicationTerminal() {
     }
   }, [router]);
 
-  const handleProcedureSubmit = async (formData: { description: string; files: File[] }) => {
+  // ◄ NEW: Fetch Profile ONLY if it's an academic request
+  useEffect(() => {
+    if (isSpecialAssessment || isAssessmentClaim) {
+      api.profile.getMe()
+        .then(data => setProfile(data))
+        .catch(err => console.error('Could not fetch profile for module dropdown', err));
+    }
+  }, [isSpecialAssessment, isAssessmentClaim]);
+
+  // ◄ NEW: Added optional moduleId to the submission payload interface
+  const handleProcedureSubmit = async (formData: { description: string; files: File[]; moduleId?: string }) => {
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -93,6 +106,11 @@ export default function DedicatedApplicationTerminal() {
       payload.append('serviceName', cleanService);
       payload.append('description', formData.description);
       payload.append('isInternational', isInternational.toString());
+
+      // ◄ NEW: Append the module ID if the child component passed it up
+      if (formData.moduleId) {
+        payload.append('moduleId', formData.moduleId);
+      }
 
       formData.files.forEach((file) => {
         payload.append('attachments', file);
@@ -121,6 +139,7 @@ export default function DedicatedApplicationTerminal() {
     if (isFinancialGateway) return "Your transaction network failure report has been cleanly captured and routed directly onto the Finance & Accounts Desk.";
     if (isRecommendation) return "Your recommendation request profile details have been locked and submitted to your Head of Department for review.";
     if (isClassAllocation) return "Timetable conflict matrices successfully logged. An allocation alert has been signaled to the Registrar Office.";
+    if (isSpecialAssessment || isAssessmentClaim) return "Your academic claim has been directly routed to the assigned module lecturer for review.";
     return "Your claim has bypassed filters and been cleanly stored within the database ledger cluster.";
   };
 
@@ -195,12 +214,14 @@ export default function DedicatedApplicationTerminal() {
                   cleanService={cleanService}
                   isSubmitting={isSubmitting}
                   onSubmit={handleProcedureSubmit}
+                  profile={profile} // ◄ NEW: Injecting the profile
                 />
               ) : isAssessmentClaim ? (
                 <AssessmentClaimProcedureForm 
                   cleanService={cleanService}
                   isSubmitting={isSubmitting}
                   onSubmit={handleProcedureSubmit}
+                  profile={profile} // ◄ NEW: Injecting the profile
                 />
               ) : isAbsencePermission ? (
                 <AbsencePermissionProcedureForm 
